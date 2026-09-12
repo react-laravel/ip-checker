@@ -1,125 +1,57 @@
 # IP Address Detector
 
-Comprehensively detect your IP address from multiple network paths, quickly determine if you're using direct connection or traffic splitting.
+Compare exit IPs reported by domestic, international, and Cloudflare endpoints, and test Google connectivity in your browser.
 
 [中文文档](./README.zh.md)
 
-## Features
-
-- **Multi-source Detection** — Detect exit IPs from 4 independent network paths: domestic, foreign, Google, and Cloudflare
-- **Latency Display** — Show real-time response time for each detection (in milliseconds)
-- **API Source Info** — Display the specific API endpoint that provided the result
-- **IPv6 Support** — Support both IPv4 and IPv6 address detection
-- **Geolocation** — Automatically query geographic location information for IPs
-- **Detection Summary** — Quick assessment of network status (direct connection/split/blocked)
-- **Privacy First** — All detection runs in your browser, no data collected
-
-## Detection Methods
-
-### Domestic Test
-
-- Uses domestic IP lookup APIs (ipip.net, useragentinfo, pconline)
-- Shows the IP used when accessing domestic websites
-
-### Foreign Test
-
-- Uses multiple international IP lookup APIs (ipify, ip.sb, httpbin, amazonaws)
-- Shows the IP used when accessing overseas sites
-
-### Google Test
-
-- Uses Google 204 probes to test reachability from the browser
-- Reuses the foreign IP result as the best-effort Google exit when the route is reachable
-
-### Cloudflare Test
-
-- Uses Cloudflare's /cdn-cgi/trace endpoint
-- Gets Cloudflare route exit IP and country code
-
-## Network Status
-
-| Status | Meaning | Display |
-| -------- | --------- | --------- |
-| Direct | All exit IPs are the same | Same exit |
-| Split | Multiple different exits detected | N exits detected |
-| Partial Block | Some routes are blocked | Some routes blocked |
-| Heavy Block | Google and CF both blocked | Google & CF blocked |
-| Unavailable | All detections failed | All failed |
-
 ## Usage
 
-1. Open `index.html` in your browser, or serve the folder with a simple local static server for stricter browsers
-2. Page auto-detects IPs from all 4 sources
-3. Click "Re-detect" button to refresh results
-4. Hover or click the 📋 button on IP cards to copy
+Serve this directory with a static server or open `index.html` directly (browser cross-origin rules may limit detection). Checks start automatically.
 
-## Tech Stack
+- IPs appear immediately; optional geolocation loads in the background.
+- Stop a running check while retaining completed results, or start a new round.
+- Retry an individual failed or stopped check without clearing other results.
+- Copy an individual IP or all available IP results. Google connectivity is excluded from IP copying.
+- Supports IPv4, IPv6, mobile layouts, keyboard controls, and reduced motion.
 
-- **Language**: Vanilla JavaScript (no framework)
-- **Styling**: Vanilla CSS with CSS variables
-- **Browser APIs**:
-  - Fetch API with abort signal
-  - Clipboard API
-  - Performance API (latency measurement)
-- **Third-party APIs**:
-  - ipip.net, useragentinfo.com, pconline.com.cn (domestic)
-  - ipify.org, ip.sb, httpbin.org, amazonaws.com (foreign)
-  - google.com, googleapis.com, gstatic.com (Google)
-  - 1.1.1.1, cloudflare.com (Cloudflare)
-  - ipinfo.io (geolocation)
+## Interpreting results
+
+| Check         | Method                                                         |
+| ------------- | -------------------------------------------------------------- |
+| Domestic      | Race domestic endpoints and accept the first valid IP          |
+| International | Race ipinfo, ipify, ip.sb, and other endpoints                 |
+| Google        | Probe 204 endpoints for a response; no inferred Google exit IP |
+| Cloudflare    | Race trace endpoints and accept the first valid IP             |
+
+Slower competing requests are cancelled after success. Domestic requests have a 6-second timeout; other probes allow 7 seconds and geolocation allows 5 seconds. Timeouts cover both response headers and body consumption.
+
+Summaries count only valid, normalized IPs. Identical IPs do not prove a direct connection; differing IPs do not prove split routing. IPv4/IPv6 pairs are described as dual-stack results. Any failed check marks the result incomplete, without interpreting API errors or browser restrictions as evidence of network blocking.
+
+An opaque Google response hides the HTTP status and cannot prove full service availability. Reported duration measures a detection request, not ICMP ping. Third-party location data may be inaccurate.
 
 ## Development
 
-Ultra-simple project structure:
+Vanilla JavaScript and CSS with no framework or build step.
 
-- `index.html` — Page markup
-- `core.js` — Pure detection helpers and summary logic
-- `browser-utils.js` — Fetch, timeout, deferred, and geo lookup helpers
-- `ui-components.js` — Result-card, summary, and interaction-feedback components
-- `ui.js` — UI component orchestration and client-side state
-- `detectors.js` — Individual network probe implementations
-- `app.js` — Thin bootstrap, orchestration, and event wiring
-- `core.test.js` — Minimal Node-based unit tests for pure logic
-- `styles.css` — Styling (~540 lines)
+- `core.js`: IP validation, normalization, explicit result states, and summaries.
+- `browser-utils.js`: response-body timeouts, cancellation signals, and location caching.
+- `detectors.js`: parallel probes, first valid responses, and background geolocation.
+- `ui-components.js`: cards, summary, and clipboard feedback.
+- `ui.js`: application state and rendering.
+- `app.js`: detection lifecycle, stopping, individual retries, and events.
+- `index.html` / `styles.css`: markup and responsive layout.
 
-### Key Timeouts
-
-- Domestic APIs: 6 seconds
-- Foreign APIs: 7 seconds
-- Other requests: 8 seconds
-- Button debounce: 1.2 seconds
-- Toast display: 1.8 seconds
-
-### Run Tests
+Run checks:
 
 ```bash
 node --test *.test.js
 ```
 
-### Adding API Sources
-
-Edit `DOMESTIC_APIS` or `FOREIGN_APIS` in `detectors.js`:
-
-```javascript
-const DOMESTIC_APIS = [
-  {
-    url: "https://your-api.com/json",
-    parse: (data) => ({
-      ip: data.ip,
-      location: data.location,
-    }),
-  },
-  // ...
-];
-```
+To add a source, edit `DOMESTIC_APIS` or `FOREIGN_APIS` in `detectors.js`. Provide a `url` and a `parse` function returning `{ ip, location }`, or use `parseText: true` for plain-text IP responses.
 
 ## Privacy
 
-- ✅ **Runs Locally** — All detection executes in your browser
-- ✅ **Zero Collection** — No data is collected, stored, or transmitted
-- ✅ **No Tracking** — No analytics, statistics, or ads
-
-> External API calls follow their respective privacy policies.
+This page has no analytics, ads, or persistent result storage. Requests reach third-party detection services, which see the request's source IP. Geolocation also sends the detected IP to ipinfo.io. Location results are cached only in page memory. Requests omit cookies and referrers; third-party services follow their own privacy policies.
 
 ## License
 

@@ -4,10 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const { KEYS } = require("./core.js");
-const {
-  CARD_DEFINITIONS,
-  getCardDefinitions,
-} = require("./ui-components.js");
+const { CARD_DEFINITIONS, getCardDefinitions } = require("./ui-components.js");
 
 test("card definitions cover each detector exactly once", () => {
   const keys = CARD_DEFINITIONS.map((definition) => definition.key);
@@ -16,9 +13,9 @@ test("card definitions cover each detector exactly once", () => {
 });
 
 test("groups the three international detectors into the overseas card", () => {
-  const overseasKeys = CARD_DEFINITIONS
-    .filter((definition) => definition.group === "overseas")
-    .map((definition) => definition.key);
+  const overseasKeys = CARD_DEFINITIONS.filter(
+    (definition) => definition.group === "overseas",
+  ).map((definition) => definition.key);
 
   assert.deepEqual(overseasKeys, ["foreign", "google", "cf"]);
 });

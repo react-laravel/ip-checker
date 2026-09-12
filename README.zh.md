@@ -1,125 +1,57 @@
 # IP 地址检测
 
-全方位查询您的 IP 地址，从不同网络路径检测出口，快速判断直连与分流状态。
+在浏览器中对照国内、国际和 Cloudflare 检测服务的出口 IP，并测试 Google 连接。
 
 [English](./README.md)
 
-## 功能特性
+## 使用
 
-- **多源检测** — 从国内、国外、Google、Cloudflare 四个独立网络路径检测出口 IP
-- **延迟显示** — 实时显示每个检测的响应延迟（单位：ms）
-- **API 源信息** — 显示成功响应的具体 API 端点
-- **IPv6 支持** — 同时支持 IPv4 和 IPv6 地址检测
-- **位置信息** — 自动查询 IP 的地理位置信息
-- **检测汇总** — 快速判断网络状态（直连/已分流/被封锁）
-- **无隐私泄露** — 所有检测在浏览器端完成，不收集任何数据
+通过静态服务器访问本目录，或直接打开 `index.html`（部分浏览器的跨域策略可能限制检测）。页面会自动开始检测。
 
-## 检测说明
+- IP 获取后立即显示，位置在后台补充，不拖慢检测进度。
+- 检测期间点击“停止检测”，保留已完成结果；完成后可“重新检测”。
+- 失败或停止的检测可单独“重试”，其他结果保留。
+- 使用每项的复制按钮，或“复制全部 IP”。Google 连接结果不作为 IP 复制。
+- 支持 IPv4、IPv6、手机布局、键盘操作和减少动态效果的系统偏好。
 
-### 从国内测试
+## 如何理解结果
 
-- 使用国内 IP 查询 API（ipip.net、useragentinfo、pconline）
-- 显示访问国内网站所使用的 IP 地址
+| 检测项     | 方法                                                   |
+| ---------- | ------------------------------------------------------ |
+| 国内出口   | 多个国内接口并行请求，采用第一个有效 IP                |
+| 国际出口   | ipinfo、ipify、ip.sb 等接口并行请求，采用第一个有效 IP |
+| Google     | 204 端点连接测试；不推断或展示 Google 出口 IP          |
+| Cloudflare | 多个 trace 端点并行请求，采用第一个有效 IP             |
 
-### 从国外测试
+所有竞争请求在成功后取消较慢请求。国内请求超时为 6 秒，其他检测为 7 秒，位置查询为 5 秒；超时覆盖响应头和响应体读取。
 
-- 使用多个国外 IP 查询 API（ipify、ip.sb、httpbin、amazonaws）
-- 显示访问海外站点所使用的 IP 地址
+汇总只统计实际获得并规范化的 IP。相同 IP 不证明直连，不同 IP 也不证明已分流；IPv4 与 IPv6 会按双栈结果说明。任何一项失败都会标明结果不完整，不把接口或跨域错误直接解释为网络封锁。
 
-### 从谷歌测试
-
-- 通过 Google 204 探测端点检测浏览器到谷歌链路的可达性
-- 当谷歌链路可达时，复用国外检测结果作为谷歌出口的最佳努力估计
-
-### 从 Cloudflare 测试
-
-- 使用 Cloudflare 的 /cdn-cgi/trace 端点
-- 获取 Cloudflare 链路的出口 IP 和国家代码
-
-## 网络状态判断
-
-| 状态 | 含义 | 显示 |
-| ------ | --------- | --------- |
-| 直连 | 所有出口 IP 相同 | 同一出口 |
-| 已分流 | 检测到多个不同出口 | 已检测到 N 个出口 |
-| 部分封锁 | 部分链路被阻断 | 部分链路被阻断 |
-| 高度封锁 | Google 和 CF 均被拦截 | 谷歌 & CF 均被阻断 |
-| 不可用 | 全部检测失败 | 全部失败 |
-
-## 使用方法
-
-1. 在浏览器中打开 `index.html`，或在更严格的浏览器策略下通过本地静态服务访问该目录
-2. 页面会自动检测四个来源的 IP 地址
-3. 点击"重新检测"按钮可刷新结果
-4. 悬停或点击 IP 卡片上的 📋 按钮可复制 IP 地址
-
-## 技术栈
-
-- **语言**: 原生 JavaScript（无框架）
-- **样式**: 原生 CSS with CSS 变量
-- **浏览器 API**:
-  - Fetch API with abort signal
-  - Clipboard API
-  - Performance API（延迟测量）
-- **第三方 API**:
-  - ipip.net、useragentinfo.com、pconline.com.cn（国内）
-  - ipify.org、ip.sb、httpbin.org、amazonaws.com（国外）
-  - google.com、googleapis.com、gstatic.com（谷歌）
-  - 1.1.1.1、cloudflare.com（Cloudflare）
-  - ipinfo.io（地理位置）
+Google 的跨域响应可能对浏览器不透明，因此“已收到响应”不能证明 HTTP 状态正常或服务完全可用。显示的耗时是检测请求耗时，不是 Ping 延迟。位置来自第三方服务，可能有偏差。
 
 ## 开发
 
-项目结构非常简洁：
+原生 JavaScript 与 CSS，无框架或构建步骤。
 
-- `index.html` — 页面结构
-- `core.js` — 纯逻辑与汇总规则
-- `browser-utils.js` — Fetch、超时、deferred 和地理查询工具
-- `ui-components.js` — 检测卡片、汇总栏与交互反馈组件
-- `ui.js` — UI 组件编排与前端状态
-- `detectors.js` — 各类网络探测实现
-- `app.js` — 精简后的启动、编排与事件绑定
-- `core.test.js` — 基于 Node 的最小单元测试
-- `styles.css` — 样式定义（约 540 行）
+- `core.js`：IP 校验与规范化、显式结果状态、汇总规则。
+- `browser-utils.js`：包含响应体的请求超时、取消信号、位置缓存。
+- `detectors.js`：并行检测、最快有效响应、后台位置补充。
+- `ui-components.js`：结果卡片、概览与复制反馈。
+- `ui.js`：界面状态和渲染。
+- `app.js`：检测生命周期、停止、单项重试和事件绑定。
+- `index.html` / `styles.css`：页面结构与响应式布局。
 
-### 关键超时时间
-
-- 国内 API：6 秒
-- 国外 API：7 秒
-- 其他请求：8 秒
-- 按钮防抖：1.2 秒
-- Toast 显示：1.8 秒
-
-### 运行测试
+运行验证：
 
 ```bash
 node --test *.test.js
 ```
 
-### 扩展 API 源
+添加 IP 接口时，编辑 `detectors.js` 中的 `DOMESTIC_APIS` 或 `FOREIGN_APIS`，提供 `url` 和返回 `{ ip, location }` 的 `parse` 函数。纯文本 IP 接口可设 `parseText: true`。
 
-编辑 `detectors.js` 中的 `DOMESTIC_APIS` 或 `FOREIGN_APIS` 数组：
+## 隐私
 
-```javascript
-const DOMESTIC_APIS = [
-  {
-    url: "https://your-api.com/json",
-    parse: (data) => ({
-      ip: data.ip,
-      location: data.location,
-    }),
-  },
-  // ...添加更多国内 API 端点
-];
-```
-
-## 隐私政策
-
-- ✅ **完全本地运行** — 所有检测均在您的浏览器中执行
-- ✅ **无数据收集** — 本页面不收集、存储、传输任何用户数据
-- ✅ **无追踪脚本** — 不使用分析、统计或广告服务
-
-> 外部 API 调用遵循各自的隐私政策（如 ipinfo.io），请阅读相关服务的隐私声明。
+本页面没有分析、广告或结果持久化。检测请求会发送至第三方服务，服务会看到请求的来源 IP；位置查询还会把检测到的 IP 发送至 ipinfo.io。位置结果仅在当前页面内存中缓存。请求不携带 Cookie 或页面来源信息，第三方服务遵循各自的隐私政策。
 
 ## License
 

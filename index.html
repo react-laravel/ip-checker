@@ -1,63 +1,119 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="IP Checker - 全方位查询您的IP地址，从不同网络路径检测出口，快速判断直连与分流状态">
-  <title>IP 地址检测</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232d2d2d'/%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' font-family='Arial' font-size='24' fill='%23e8e8e8'%3EIP%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./styles.css">
-</head>
-<body>
-  <div class="page-shell">
-    <header class="hero">
-      <div class="hero-text">
-        <h1 class="hero-title">IP 地址检测</h1>
-        <p class="hero-subtitle">从不同网络路径检测出口，快速判断直连与分流状态</p>
-      </div>
-    </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="从国内、国际与 Cloudflare 检测服务对照出口 IP，并测试 Google 连接。"
+    />
+    <title>IP 地址检测</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2378dfbb'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='26' fill='%23121b18'%3EIP%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./styles.css?v=20260912" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">IP</span
+          ><span>NETWORK TOOLS</span>
+        </div>
+        <h1>IP 地址检测</h1>
+        <p class="hero-subtitle">对照不同服务的出口 IP，了解当前网络连接。</p>
+      </header>
 
-    <div class="center-wrap">
-      <section class="control-panel" aria-label="检测控制">
-        <div class="summary" id="summary">
-          <div class="summary-icon" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div class="summary-content">
-            <div class="summary-title">检测概览</div>
-            <div class="summary-row">
-              <div class="summary-status" id="summary-status" role="status" aria-live="polite">检测中…</div>
-              <div class="summary-time" id="summary-time"></div>
+      <main>
+        <section class="control-panel" aria-label="检测概览与操作">
+          <div class="summary" id="summary">
+            <p class="eyebrow">检测概览</p>
+            <div
+              id="summary-status"
+              class="summary-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              正在检测网络出口
+            </div>
+            <p id="summary-description" class="summary-description">
+              正在连接检测服务，结果将逐项显示。
+            </p>
+            <div class="progress-row">
+              <progress
+                id="detection-progress"
+                value="0"
+                max="4"
+                aria-label="检测进度"
+              ></progress>
+              <span id="progress-caption">已完成 0 / 4 项</span>
+              <span id="summary-time"></span>
             </div>
           </div>
-          <button class="copy-all-btn" id="copy-all-btn" type="button" aria-label="复制全部 IP" title="复制全部 IP">
-            <span aria-hidden="true">⧉</span>
-          </button>
-        </div>
-        <button class="refresh-btn" id="refresh-btn" type="button" aria-label="重新检测">
-          <span class="refresh-icon" aria-hidden="true">↻</span>
-          <span class="refresh-text">重新检测</span>
-        </button>
-      </section>
-
-      <main class="card-grid" id="result-grid"></main>
+          <div class="control-actions">
+            <button class="refresh-btn" id="refresh-btn" type="button">
+              <svg class="refresh-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M20 7v5h-5 M4 17v-5h5 M6 6a8 8 0 0 1 13 3 M18 18A8 8 0 0 1 5 15"
+                />
+              </svg>
+              <span class="stop-icon" aria-hidden="true"></span>
+              <span class="refresh-text">重新检测</span>
+            </button>
+            <button
+              class="copy-all-btn"
+              id="copy-all-btn"
+              type="button"
+              disabled
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 9h11v11H9z M5 15H3V3h12v2" />
+              </svg>
+              复制全部 IP
+            </button>
+          </div>
+        </section>
+        <div class="card-grid" id="result-grid"></div>
+        <details class="method-note">
+          <summary>如何理解检测结果？</summary>
+          <div class="method-content">
+            <p>
+              <strong>出口对照</strong
+              >每组采用最先有效响应的检测服务。结果仅代表该服务的访问路径；相同
+              IP 无法证明直连，不同 IP 也可能来自双栈网络或代理规则。
+            </p>
+            <p>
+              <strong>Google 连接</strong
+              >仅测试请求是否得到响应。浏览器可能隐藏响应状态，无法独立获取
+              Google 出口 IP，也不能据此确认服务完全可用。
+            </p>
+            <p>
+              <strong>失败与耗时</strong
+              >接口异常、超时或浏览器跨域限制均可能导致失败。耗时是一次检测请求的响应时间，不是
+              Ping 延迟；位置数据也可能存在偏差。
+            </p>
+          </div>
+        </details>
+      </main>
+      <footer class="footer-note">
+        <span class="privacy-dot" aria-hidden="true"></span>检测在浏览器中运行 ·
+        本页面不保存结果<br /><span>请求会发送至第三方检测与位置服务。</span>
+      </footer>
+      <noscript
+        ><p class="noscript-note">
+          请启用 JavaScript 后使用 IP 地址检测。
+        </p></noscript
+      >
     </div>
-
-    <footer class="footer-note">
-      本页面所有检测均在浏览器端完成，不收集任何数据
-    </footer>
-  </div>
-
-  <div id="toast" role="status" aria-live="polite"></div>
-  <div id="copy-tip" role="tooltip"></div>
-
-  <script src="./core.js" defer></script>
-  <script src="./browser-utils.js" defer></script>
-  <script src="./ui-components.js" defer></script>
-  <script src="./ui.js" defer></script>
-  <script src="./detectors.js" defer></script>
-  <script src="./app.js" defer></script>
-</body>
+    <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./core.js?v=20260912" defer></script>
+    <script src="./browser-utils.js?v=20260912" defer></script>
+    <script src="./ui-components.js?v=20260912" defer></script>
+    <script src="./ui.js?v=20260912" defer></script>
+    <script src="./detectors.js?v=20260912" defer></script>
+    <script src="./app.js?v=20260912" defer></script>
+  </body>
 </html>

@@ -5,6 +5,7 @@
  * @param {typeof globalThis} globalScope
  */
 (function initBrowserUtils(globalScope) {
+  /** @typedef {{ ok: boolean, status: number, type: string, text: () => Promise<string> }} FetchResult */
   /**
    * Create a promise that can be resolved from outside the executor.
    * @returns {{ promise: Promise<void>, resolve: () => void }}
@@ -48,7 +49,8 @@
   function combineSignals(signals) {
     const activeSignals = signals.filter(Boolean);
     if (activeSignals.length === 0) return { signal: undefined, release: NOOP };
-    if (activeSignals.length === 1) return { signal: activeSignals[0], release: NOOP };
+    if (activeSignals.length === 1)
+      return { signal: activeSignals[0], release: NOOP };
 
     if (typeof AbortSignal.any === "function") {
       return { signal: AbortSignal.any(activeSignals), release: NOOP };
@@ -80,7 +82,7 @@
   /**
    * Create a fetch wrapper that applies timeout and abort handling consistently.
    * @param {number} defaultTimeoutMs
-   * @returns {(url: string, options?: RequestInit, timeoutMs?: number) => Promise<Response>}
+   * @returns {(url: string, options?: RequestInit, timeoutMs?: number) => Promise<FetchResult>}
    */
   function createSafeFetch(defaultTimeoutMs) {
     /**
@@ -88,17 +90,31 @@
      * @param {string} url
      * @param {RequestInit} [options]
      * @param {number} [timeoutMs]
-     * @returns {Promise<Response>}
+     * @returns {Promise<FetchResult>}
      */
-    return async function safeFetch(url, options = {}, timeoutMs = defaultTimeoutMs) {
+    return async function safeFetch(
+      url,
+      options = {},
+      timeoutMs = defaultTimeoutMs,
+    ) {
       const guard = withTimeout(timeoutMs);
       const composite = combineSignals([guard.signal, options.signal]);
       try {
-        return await fetch(url, {
+        const response = await fetch(url, {
           ...options,
           signal: composite.signal,
           cache: "no-store",
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
         });
+        // Keep the timeout active until the response body has also arrived.
+        const body = await response.text();
+        return {
+          ok: response.ok,
+          status: response.status,
+          type: response.type,
+          text: async () => body,
+        };
       } catch (error) {
         if (guard.signal.aborted && !isRunAborted(options.signal)) {
           throw new DOMException("Request timed out", "TimeoutError");
@@ -113,7 +129,7 @@
 
   /**
    * Create a cached geo lookup function backed by ipinfo.io.
-   * @param {{ safeFetch: (url: string, options?: RequestInit, timeoutMs?: number) => Promise<Response>, timeoutMs: number }} options
+   * @param {{ safeFetch: (url: string, options?: RequestInit, timeoutMs?: number) => Promise<FetchResult>, timeoutMs: number }} options
    * @returns {(ip: string, signal?: AbortSignal) => Promise<string | null>}
    */
   function createGeoLookup({ safeFetch, timeoutMs }) {
@@ -129,7 +145,7 @@
       if (geoCache.has(ip)) return geoCache.get(ip);
       try {
         const res = await safeFetch(
-          `https://ipinfo.io/${ip}/json`,
+          `https://ipinfo.io/${encodeURIComponent(ip)}/json`,
           { signal },
           timeoutMs,
         );

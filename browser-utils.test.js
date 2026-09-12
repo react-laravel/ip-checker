@@ -106,9 +106,53 @@ test("createSafeFetch propagates external abort without rewriting the error", as
   try {
     const safeFetch = createSafeFetch(1000);
     const controller = new AbortController();
-    const pending = safeFetch("https://example.invalid", { signal: controller.signal });
+    const pending = safeFetch("https://example.invalid", {
+      signal: controller.signal,
+    });
     controller.abort();
     await assert.rejects(pending, (error) => error.name === "AbortError");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("safeFetch deadline covers a stalled response body", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, { signal }) => ({
+    ok: true,
+    status: 200,
+    type: "basic",
+    text: () =>
+      new Promise((_resolve, reject) =>
+        signal.addEventListener(
+          "abort",
+          () => reject(new DOMException("aborted", "AbortError")),
+          { once: true },
+        ),
+      ),
+  });
+  try {
+    await assert.rejects(createSafeFetch(10)("https://example.invalid"), {
+      name: "TimeoutError",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("safeFetch returns the body and omits credentials and referrer", async () => {
+  const originalFetch = globalThis.fetch;
+  let options;
+  globalThis.fetch = async (_url, received) => {
+    options = received;
+    return { ok: true, status: 200, type: "cors", text: async () => "1.2.3.4" };
+  };
+  try {
+    const response = await createSafeFetch(20)("https://example.invalid");
+    assert.equal(await response.text(), "1.2.3.4");
+    assert.equal(options.credentials, "omit");
+    assert.equal(options.referrerPolicy, "no-referrer");
+    assert.equal(options.cache, "no-store");
   } finally {
     globalThis.fetch = originalFetch;
   }
